@@ -30,6 +30,7 @@ from six import string_types, iteritems
 
 import numpy as np
 import tensorflow as tf
+from tensorflow.contrib import tensorrt as trt
 #from math import floor
 import cv2
 import os
@@ -70,7 +71,9 @@ class Network(object):
         # If true, the resulting variables are set as trainable
         self.trainable = trainable
 
-        self.setup()
+        self.graph = tf.Graph()
+        with self.graph.as_default():
+            self.setup()
 
     def setup(self):
         """Construct the network. """
@@ -108,6 +111,37 @@ class Network(object):
                     raise KeyError('Unknown layer name fed: %s' % fed_layer)
             self.terminals.append(fed_layer)
         return self
+
+    def build_inference_fcn(
+            self,
+            sess,
+            input_name,
+            output_names,
+            use_trt=False,
+            max_batch_size=128,
+            precision='fp16'):
+        if not use_trt:
+            return lambda img: sess.run(output_names, feed_dict={input_name:img})
+        graph = tf.graph_util.convert_variables_to_constants(
+            sess,
+            self.graph.as_graph_def(),
+            output_names)
+        trt_graph_def = trt.create_inference_graph(
+            graph,
+            outputs=output_names,
+            max_batch_size=max_batch_size,
+            max_workspace_size_bytes=1<<25,
+            precision_mode=precision,
+            minimum_segment_size=2)
+        g = tf.Graph()
+        with g.as_default():
+            graph_tensors = tf.import_graph_def(
+                graph_def=trt_graph_def,
+                return_elements=[input_name]+output_names)
+            input = graph_tensors.pop(0).outputs[0]
+            outputs = [i.outputs[0] for i in graph_tensors]
+        sess = tf.session(graph=g)
+        return lambda img: sess.run(outputs, feed_dict={input: img})
 
     def get_output(self):
         """Returns the current network output."""
@@ -281,18 +315,20 @@ def create_mtcnn(sess, model_path):
         data = tf.placeholder(tf.float32, (None,None,None,3), 'input')
         pnet = PNet({'data':data})
         pnet.load(os.path.join(model_path, 'det1.npy'), sess)
+        pnet_fun = pnet.build_inference_fcn(sess, 'pnet/input:0', ['pnet/conv4-2/BiasAdd:0', 'pnet/prob1:0'], use_trt=True)
+
     with tf.variable_scope('rnet'):
         data = tf.placeholder(tf.float32, (None,24,24,3), 'input')
         rnet = RNet({'data':data})
         rnet.load(os.path.join(model_path, 'det2.npy'), sess)
+        rnet_fun = pnet.build_inference_fcn(sess, 'rnet/input:0', ['rnet/conv5-2/conv5-2:0', 'rnet/prob1:0'], use_trt=True)
+
     with tf.variable_scope('onet'):
         data = tf.placeholder(tf.float32, (None,48,48,3), 'input')
         onet = ONet({'data':data})
         onet.load(os.path.join(model_path, 'det3.npy'), sess)
-        
-    pnet_fun = lambda img : sess.run(('pnet/conv4-2/BiasAdd:0', 'pnet/prob1:0'), feed_dict={'pnet/input:0':img})
-    rnet_fun = lambda img : sess.run(('rnet/conv5-2/conv5-2:0', 'rnet/prob1:0'), feed_dict={'rnet/input:0':img})
-    onet_fun = lambda img : sess.run(('onet/conv6-2/conv6-2:0', 'onet/conv6-3/conv6-3:0', 'onet/prob1:0'), feed_dict={'onet/input:0':img})
+        onet_fun = onet.build_inference_fcn(sess, 'onet/input:0', ['onet/conv6-2/conv6-2:0', 'onet/conv6-3/conv6-3:0', 'onet/prob1:0'], use_trt=True)
+
     return pnet_fun, rnet_fun, onet_fun
 
 def detect_face(img, minsize, pnet, rnet, onet, threshold, factor):
