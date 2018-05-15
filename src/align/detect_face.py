@@ -140,7 +140,7 @@ class Network(object):
                 return_elements=[input_name]+output_names)
             input = graph_tensors.pop(0).outputs[0]
             outputs = [i.outputs[0] for i in graph_tensors]
-        sess = tf.session(graph=g)
+        sess = tf.Session(graph=g)
         return lambda img: sess.run(outputs, feed_dict={input: img})
 
     def get_output(self):
