@@ -321,7 +321,7 @@ def create_mtcnn(sess, model_path, use_trt=False):
 
     with tf.variable_scope('rnet'):
         graph = tf.Graph()
-        with graph.as_default()
+        with graph.as_default():
             data = tf.placeholder(tf.float32, (None,24,24,3), 'input')
             rnet = RNet({'data':data})
         rnet.load(os.path.join(model_path, 'det2.npy'), sess)
