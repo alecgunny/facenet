@@ -307,7 +307,7 @@ class ONet(Network):
         (self.feed('prelu5') #pylint: disable=no-value-for-parameter
              .fc(10, relu=False, name='conv6-3'))
 
-def create_mtcnn(sess, model_path, gpu_options, use_trt=False):
+def create_mtcnn(gpu_options, model_path, use_trt=False):
     if not model_path:
         model_path,_ = os.path.split(os.path.realpath(__file__))
 
