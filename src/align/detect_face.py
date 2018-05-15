@@ -324,7 +324,8 @@ def get_inference_function(
         use_trt=False):
     graph = tf.Graph()
     with graph.as_default():
-        sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options, log_device_placement=False))
+        tf.ConfigProto(gpu_options=gpu_options, allow_growth=True, log_device_placement=False)
+        sess = tf.Session(config=config)
         with sess.as_default():
             data = tf.placeholder(tf.float32, input_shape, 'input')
             net = network({'data': data})
