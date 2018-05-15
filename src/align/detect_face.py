@@ -327,7 +327,7 @@ def get_inference_function(
         sess,
         graph,
         'input',
-        ouptut_names,
+        output_names,
         use_trt=use_trt)
 
 def create_mtcnn(gpu_options, model_path, use_trt=False):
