@@ -121,6 +121,7 @@ class Network(object):
             precision='fp16'):
         if not use_trt:
             return lambda img: sess.run(output_names, feed_dict={input_name:img})
+        print('Compiling inference engine with TensorRT')
         graph = tf.graph_util.convert_variables_to_constants(
             sess,
             self.graph.as_graph_def(),
@@ -306,7 +307,7 @@ class ONet(Network):
         (self.feed('prelu5') #pylint: disable=no-value-for-parameter
              .fc(10, relu=False, name='conv6-3'))
 
-def create_mtcnn(sess, model_path):
+def create_mtcnn(sess, model_path, use_trt=False):
     if not model_path:
         model_path,_ = os.path.split(os.path.realpath(__file__))
 
@@ -316,7 +317,7 @@ def create_mtcnn(sess, model_path):
             data = tf.placeholder(tf.float32, (None,None,None,3), 'input')
             pnet = PNet({'data':data})
         pnet.load(os.path.join(model_path, 'det1.npy'), sess)
-        pnet_fun = pnet.build_inference_fcn(sess, 'pnet/input:0', ['pnet/conv4-2/BiasAdd:0', 'pnet/prob1:0'], use_trt=True)
+        pnet_fun = pnet.build_inference_fcn(sess, 'pnet/input:0', ['pnet/conv4-2/BiasAdd:0', 'pnet/prob1:0'], use_trt=use_trt)
 
     with tf.variable_scope('rnet'):
         graph = tf.Graph()
@@ -324,7 +325,7 @@ def create_mtcnn(sess, model_path):
             data = tf.placeholder(tf.float32, (None,24,24,3), 'input')
             rnet = RNet({'data':data})
         rnet.load(os.path.join(model_path, 'det2.npy'), sess)
-        rnet_fun = pnet.build_inference_fcn(sess, 'rnet/input:0', ['rnet/conv5-2/conv5-2:0', 'rnet/prob1:0'], use_trt=True)
+        rnet_fun = pnet.build_inference_fcn(sess, 'rnet/input:0', ['rnet/conv5-2/conv5-2:0', 'rnet/prob1:0'], use_trt=use_trt)
 
     with tf.variable_scope('onet'):
         graph = tf.Graph():
@@ -332,7 +333,7 @@ def create_mtcnn(sess, model_path):
             data = tf.placeholder(tf.float32, (None,48,48,3), 'input')
             onet = ONet({'data':data})
         onet.load(os.path.join(model_path, 'det3.npy'), sess)
-        onet_fun = onet.build_inference_fcn(sess, 'onet/input:0', ['onet/conv6-2/conv6-2:0', 'onet/conv6-3/conv6-3:0', 'onet/prob1:0'], use_trt=True)
+        onet_fun = onet.build_inference_fcn(sess, 'onet/input:0', ['onet/conv6-2/conv6-2:0', 'onet/conv6-3/conv6-3:0', 'onet/prob1:0'], use_trt=use_trt)
 
     return pnet_fun, rnet_fun, onet_fun
 
