@@ -322,8 +322,8 @@ def create_mtcnn(gpu_options, model_path, use_trt=False):
         pnet_fun = pnet.build_inference_fcn(
             sess,
             graph,
-            'input:0',
-            ['conv4-2/BiasAdd:0',
+            'input',
+            ['conv4-2/BiasAdd',
             'prob1:0'],
             use_trt=use_trt)
 
