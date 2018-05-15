@@ -122,12 +122,12 @@ class Network(object):
         if not use_trt:
             return lambda img: sess.run(output_names, feed_dict={input_name:img})
         print('Compiling inference engine with TensorRT')
-        graph = tf.graph_util.convert_variables_to_constants(
+        graph_def = tf.graph_util.convert_variables_to_constants(
             sess,
-            self.graph.as_graph_def(),
+            graph.as_graph_def(),
             output_names)
         trt_graph_def = trt.create_inference_graph(
-            graph,
+            graph_def,
             outputs=output_names,
             max_batch_size=max_batch_size,
             max_workspace_size_bytes=1<<25,
@@ -319,15 +319,13 @@ def create_mtcnn(gpu_options, model_path, use_trt=False):
                 data = tf.placeholder(tf.float32, (None,None,None,3), 'input')
                 pnet = PNet({'data':data})
                 pnet.load(os.path.join(model_path, 'det1.npy'), sess)
-                for op in graph.get_operations():
-                    print(op.name)
-                pnet_fun = pnet.build_inference_fcn(
-                    sess,
-                    graph,
-                    'pnet/input:0',
-                    ['pnet/conv4-2/BiasAdd:0',
-                    'pnet/prob1:0'],
-                    use_trt=use_trt)
+        pnet_fun = pnet.build_inference_fcn(
+            sess,
+            graph,
+            'input:0',
+            ['conv4-2/BiasAdd:0',
+            'prob1:0'],
+            use_trt=use_trt)
 
     with tf.variable_scope('rnet'):
         graph = tf.Graph()
