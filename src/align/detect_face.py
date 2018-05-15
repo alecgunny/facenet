@@ -315,6 +315,7 @@ def get_inference_function(
         model_path,
         weights,
         gpu_options,
+        max_batch_size=128,
         use_trt=False):
     graph = tf.Graph()
     with graph.as_default():
@@ -328,15 +329,16 @@ def get_inference_function(
         graph,
         'input',
         output_names,
+        max_batch_size=max_batch_size,
         use_trt=use_trt)
 
 def create_mtcnn(gpu_options, model_path, use_trt=False):
     if not model_path:
         model_path,_ = os.path.split(os.path.realpath(__file__))
 
-    pnet_fun = get_inference_function(PNet, (None,None,None,3), ['conv4-2/BiasAdd', 'prob1'], model_path, 'det1.npy', gpu_options, use_trt=use_trt)
-    rnet_fun = get_inference_function(RNet, (None,24,24,3), ['conv5-2/conv5-2', 'prob1'], model_path, 'det2.npy', gpu_options, use_trt=use_trt)
-    onet_fun = get_inference_function(ONet, (None,48,48,3), ['conv6-2/conv6-2', 'conv6-3/conv6-3', 'prob1'], model_path, 'det3.npy', gpu_options, use_trt=use_trt)
+    pnet_fun = get_inference_function(PNet, (None,None,None,3), ['conv4-2/BiasAdd', 'prob1'], model_path, 'det1.npy', gpu_options, 1, use_trt=use_trt)
+    rnet_fun = get_inference_function(RNet, (None,24,24,3), ['conv5-2/conv5-2', 'prob1'], model_path, 'det2.npy', gpu_options, 256, use_trt=use_trt)
+    onet_fun = get_inference_function(ONet, (None,48,48,3), ['conv6-2/conv6-2', 'conv6-3/conv6-3', 'prob1'], model_path, 'det3.npy', gpu_options, 256, use_trt=use_trt)
     return pnet_fun, rnet_fun, onet_fun
 
 def detect_face(img, minsize, pnet, rnet, onet, threshold, factor):
