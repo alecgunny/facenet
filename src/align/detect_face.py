@@ -313,7 +313,7 @@ def create_mtcnn(gpu_options, model_path, use_trt=False):
     with tf.variable_scope('pnet'):
         graph = tf.Graph()
         with graph.as_default():
-            sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options, log_device_placement=False)
+            sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options, log_device_placement=False))
             with sess.as_default():
                 data = tf.placeholder(tf.float32, (None,None,None,3), 'input')
                 pnet = PNet({'data':data})
