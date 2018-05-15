@@ -70,8 +70,6 @@ class Network(object):
         self.layers = dict(inputs)
         # If true, the resulting variables are set as trainable
         self.trainable = trainable
-
-        self.graph = graph
         self.setup()
 
     def setup(self):
@@ -114,6 +112,7 @@ class Network(object):
     def build_inference_fcn(
             self,
             sess,
+            graph,
             input_name,
             output_names,
             use_trt=False,
@@ -314,12 +313,20 @@ def create_mtcnn(gpu_options, model_path, use_trt=False):
     with tf.variable_scope('pnet'):
         graph = tf.Graph()
         with graph.as_default():
-            sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options, log_device_placement=False))
+            sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options, log_device_placement=False)
             with sess.as_default():
                 data = tf.placeholder(tf.float32, (None,None,None,3), 'input')
-                pnet = PNet({'data':data}, graph)
+                pnet = PNet({'data':data})
                 pnet.load(os.path.join(model_path, 'det1.npy'), sess)
-                pnet_fun = pnet.build_inference_fcn(sess, 'pnet/input:0', ['pnet/conv4-2/BiasAdd:0', 'pnet/prob1:0'], use_trt=use_trt)
+                for node in pnet.node:
+                    print(node.name)
+                pnet_fun = pnet.build_inference_fcn(
+                    sess,
+                    graph,
+                    'pnet/input:0',
+                    ['pnet/conv4-2/BiasAdd:0',
+                    'pnet/prob1:0'],
+                    use_trt=use_trt)
 
     with tf.variable_scope('rnet'):
         graph = tf.Graph()
