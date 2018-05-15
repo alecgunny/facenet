@@ -307,33 +307,39 @@ class ONet(Network):
         (self.feed('prelu5') #pylint: disable=no-value-for-parameter
              .fc(10, relu=False, name='conv6-3'))
 
-def create_mtcnn(sess, model_path, use_trt=False):
+def create_mtcnn(sess, model_path, gpu_options, use_trt=False):
     if not model_path:
         model_path,_ = os.path.split(os.path.realpath(__file__))
 
     with tf.variable_scope('pnet'):
         graph = tf.Graph()
         with graph.as_default():
-            data = tf.placeholder(tf.float32, (None,None,None,3), 'input')
-            pnet = PNet({'data':data}, graph)
-            pnet.load(os.path.join(model_path, 'det1.npy'), sess)
-            pnet_fun = pnet.build_inference_fcn(sess, 'pnet/input:0', ['pnet/conv4-2/BiasAdd:0', 'pnet/prob1:0'], use_trt=use_trt)
+            sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options, log_device_placement=False))
+            with sess.as_default():
+                data = tf.placeholder(tf.float32, (None,None,None,3), 'input')
+                pnet = PNet({'data':data}, graph)
+                pnet.load(os.path.join(model_path, 'det1.npy'), sess)
+                pnet_fun = pnet.build_inference_fcn(sess, 'pnet/input:0', ['pnet/conv4-2/BiasAdd:0', 'pnet/prob1:0'], use_trt=use_trt)
 
     with tf.variable_scope('rnet'):
         graph = tf.Graph()
         with graph.as_default():
-            data = tf.placeholder(tf.float32, (None,24,24,3), 'input')
-            rnet = RNet({'data':data}, graph)
-            rnet.load(os.path.join(model_path, 'det2.npy'), sess)
-            rnet_fun = pnet.build_inference_fcn(sess, 'rnet/input:0', ['rnet/conv5-2/conv5-2:0', 'rnet/prob1:0'], use_trt=use_trt)
+            sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options, log_device_placement=False))
+            with sess.as_default():
+                data = tf.placeholder(tf.float32, (None,24,24,3), 'input')
+                rnet = RNet({'data':data}, graph)
+                rnet.load(os.path.join(model_path, 'det2.npy'), sess)
+                rnet_fun = pnet.build_inference_fcn(sess, 'rnet/input:0', ['rnet/conv5-2/conv5-2:0', 'rnet/prob1:0'], use_trt=use_trt)
 
     with tf.variable_scope('onet'):
         graph = tf.Graph()
         with graph.as_default():
-            data = tf.placeholder(tf.float32, (None,48,48,3), 'input')
-            onet = ONet({'data':data}, graph)
-            onet.load(os.path.join(model_path, 'det3.npy'), sess)
-            onet_fun = onet.build_inference_fcn(sess, 'onet/input:0', ['onet/conv6-2/conv6-2:0', 'onet/conv6-3/conv6-3:0', 'onet/prob1:0'], use_trt=use_trt)
+            sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options, log_device_placement=False))
+            with sess.as_default():
+                data = tf.placeholder(tf.float32, (None,48,48,3), 'input')
+                onet = ONet({'data':data}, graph)
+                onet.load(os.path.join(model_path, 'det3.npy'), sess)
+                onet_fun = onet.build_inference_fcn(sess, 'onet/input:0', ['onet/conv6-2/conv6-2:0', 'onet/conv6-3/conv6-3:0', 'onet/prob1:0'], use_trt=use_trt)
 
     return pnet_fun, rnet_fun, onet_fun
 
