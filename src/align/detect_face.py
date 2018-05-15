@@ -328,7 +328,7 @@ def create_mtcnn(sess, model_path, use_trt=False):
         rnet_fun = pnet.build_inference_fcn(sess, 'rnet/input:0', ['rnet/conv5-2/conv5-2:0', 'rnet/prob1:0'], use_trt=use_trt)
 
     with tf.variable_scope('onet'):
-        graph = tf.Graph():
+        graph = tf.Graph()
         with graph.as_default():
             data = tf.placeholder(tf.float32, (None,48,48,3), 'input')
             onet = ONet({'data':data})
