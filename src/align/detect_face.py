@@ -319,8 +319,8 @@ def create_mtcnn(gpu_options, model_path, use_trt=False):
                 data = tf.placeholder(tf.float32, (None,None,None,3), 'input')
                 pnet = PNet({'data':data})
                 pnet.load(os.path.join(model_path, 'det1.npy'), sess)
-                for node in graph.node:
-                    print(node.name)
+                for op in graph.get_operations():
+                    print(op.name)
                 pnet_fun = pnet.build_inference_fcn(
                     sess,
                     graph,
