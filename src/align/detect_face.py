@@ -120,8 +120,13 @@ class Network(object):
             max_batch_size=128,
             precision='fp16'):
         if not use_trt:
+            input_name = input_name + ":0"
+            output_names = [name+":0" for name in output_names]
             return lambda img: sess.run(output_names, feed_dict={input_name:img})
-        print('Compiling inference engine with TensorRT')
+
+        # for TensorRT, freeze the variables to constants to make a frozen graph
+        # then build a TRT inference engine from this, load it into a session,
+        # and then build the appropriate lambda funtion
         graph_def = tf.graph_util.convert_variables_to_constants(
             sess,
             graph.as_graph_def(),
