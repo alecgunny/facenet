@@ -61,7 +61,7 @@ def layer(op):
 
 class Network(object):
 
-    def __init__(self, inputs, graph, trainable=True):
+    def __init__(self, inputs, trainable=True):
         # The input nodes for this network
         self.inputs = inputs
         # The current list of terminal nodes
@@ -70,6 +70,7 @@ class Network(object):
         self.layers = dict(inputs)
         # If true, the resulting variables are set as trainable
         self.trainable = trainable
+
         self.setup()
 
     def setup(self):
