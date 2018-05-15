@@ -61,7 +61,7 @@ def layer(op):
 
 class Network(object):
 
-    def __init__(self, inputs, trainable=True):
+    def __init__(self, inputs, graph, trainable=True):
         # The input nodes for this network
         self.inputs = inputs
         # The current list of terminal nodes
@@ -71,9 +71,8 @@ class Network(object):
         # If true, the resulting variables are set as trainable
         self.trainable = trainable
 
-        self.graph = tf.Graph()
-        with self.graph.as_default():
-            self.setup()
+        self.graph = graph
+        self.setup()
 
     def setup(self):
         """Construct the network. """
@@ -312,20 +311,26 @@ def create_mtcnn(sess, model_path):
         model_path,_ = os.path.split(os.path.realpath(__file__))
 
     with tf.variable_scope('pnet'):
-        data = tf.placeholder(tf.float32, (None,None,None,3), 'input')
-        pnet = PNet({'data':data})
+        graph = tf.Graph()
+        with graph.as_default():
+            data = tf.placeholder(tf.float32, (None,None,None,3), 'input')
+            pnet = PNet({'data':data})
         pnet.load(os.path.join(model_path, 'det1.npy'), sess)
         pnet_fun = pnet.build_inference_fcn(sess, 'pnet/input:0', ['pnet/conv4-2/BiasAdd:0', 'pnet/prob1:0'], use_trt=True)
 
     with tf.variable_scope('rnet'):
-        data = tf.placeholder(tf.float32, (None,24,24,3), 'input')
-        rnet = RNet({'data':data})
+        graph = tf.Graph()
+        with graph.as_default()
+            data = tf.placeholder(tf.float32, (None,24,24,3), 'input')
+            rnet = RNet({'data':data})
         rnet.load(os.path.join(model_path, 'det2.npy'), sess)
         rnet_fun = pnet.build_inference_fcn(sess, 'rnet/input:0', ['rnet/conv5-2/conv5-2:0', 'rnet/prob1:0'], use_trt=True)
 
     with tf.variable_scope('onet'):
-        data = tf.placeholder(tf.float32, (None,48,48,3), 'input')
-        onet = ONet({'data':data})
+        graph = tf.Graph():
+        with graph.as_default():
+            data = tf.placeholder(tf.float32, (None,48,48,3), 'input')
+            onet = ONet({'data':data})
         onet.load(os.path.join(model_path, 'det3.npy'), sess)
         onet_fun = onet.build_inference_fcn(sess, 'onet/input:0', ['onet/conv6-2/conv6-2:0', 'onet/conv6-3/conv6-3:0', 'onet/prob1:0'], use_trt=True)
 
