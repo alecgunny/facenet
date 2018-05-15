@@ -308,7 +308,7 @@ class ONet(Network):
              .fc(10, relu=False, name='conv6-3'))
 
 
-def get_inference_functions(
+def get_inference_function(
         network,
         input_shape,
         output_names,
