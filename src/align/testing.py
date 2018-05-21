@@ -3,17 +3,18 @@ import tensorflow as tf
 import time
 import numpy as np
 import argparse
+import sys
 
 parser = argparse.ArgumentParser()
-parser.add_argument('net', default='pnet', type=str)
+parser.add_argument('net', type=str)
+parser.add_argument('max_batch_size', type=int)
 args = parser.parse_args()
 
-net = args.net
 gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.5, allow_growth=True)
-tf_graph_def, tf_func, trt_graph_def, trt_func = get_graph_and_func(gpu_options, None, net)
+tf_graph_def, tf_func, trt_graph_def, trt_func = get_graph_and_func(gpu_options, None, args.net, args.max_batch_size)
 
-input_shapes = {'pnet': (1, 150, 150, 3), 'rnet': (512, 24, 24, 3), 'onet': (512, 48, 48, 3)}
-inp = np.random.randn(*input_shapes[net]).astype('float32')
+input_shapes = {'pnet': (150, 150, 3), 'rnet': (24, 24, 3), 'onet': (48, 48, 3)}
+inp = np.random.randn(args.max_batch_size, *input_shapes[args.net]).astype('float32')
 
 def time_func(func, inp, iters=100):
     start = time.time()

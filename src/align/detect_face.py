@@ -422,15 +422,15 @@ def _create_graphs(gpu_options, model_path, use_trt=False):
     onet_graph = get_inference_graph(ONet, (None,48,48,3), ['conv6-2/conv6-2', 'conv6-3/conv6-3', 'prob1'], model_path, 'det3.npy', gpu_options, 512, use_trt=use_trt)
     return pnet_graph, rnet_graph, onet_graph
 
-def get_graph_and_func(gpu_options, model_path, func='pnet'):
+def get_graph_and_func(gpu_options, model_path, func, max_batch_size):
     if not model_path:
             model_path,_ = os.path.split(os.path.realpath(__file__))
     if func == 'pnet':
-        return get_graphs_and_funcs(PNet, (None,150,150,3), ['conv4-2/BiasAdd', 'prob1'], model_path, 'det1.npy', gpu_options, 1)
+        return get_graphs_and_funcs(PNet, (None,150,150,3), ['conv4-2/BiasAdd', 'prob1'], model_path, 'det1.npy', gpu_options, max_batch_size)
     elif func == 'rnet':
-        return get_graphs_and_funcs(RNet, (None,24,24,3), ['conv5-2/conv5-2', 'prob1'], model_path, 'det2.npy', gpu_options, 512)
+        return get_graphs_and_funcs(RNet, (None,24,24,3), ['conv5-2/conv5-2', 'prob1'], model_path, 'det2.npy', gpu_options, max_batch_size)
     elif func == 'onet':
-        return get_graphs_and_funcs(ONet, (None,48,48,3), ['conv6-2/conv6-2', 'conv6-3/conv6-3', 'prob1'], model_path, 'det3.npy', gpu_options, 512)
+        return get_graphs_and_funcs(ONet, (None,48,48,3), ['conv6-2/conv6-2', 'conv6-3/conv6-3', 'prob1'], model_path, 'det3.npy', gpu_options, max_batch_size)
     else:
         raise ValueError('Unknown func {}'.format(func))
 

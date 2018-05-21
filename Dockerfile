@@ -31,3 +31,4 @@ ENV PYTHONPATH /workspace/facenet/src/
 WORKDIR /workspace/facenet/
 
 ENTRYPOINT ["python", "-i", "src/align/testing.py"]
+CMD ['pnet', '1']
