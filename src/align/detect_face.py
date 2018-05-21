@@ -110,6 +110,40 @@ class Network(object):
             self.terminals.append(fed_layer)
         return self
 
+    def build_trt_graph_def(
+            self,
+            sess,
+            graph,
+            output_names,
+            max_batch_size,
+            precision):
+        # for TensorRT, freeze the variables to constants to make a frozen graph
+        # then build the TensorRT graph
+        graph_def = tf.graph_util.convert_variables_to_constants(
+            sess,
+            graph.as_graph_def(),
+            output_names)
+        return trt.create_inference_graph(
+            graph_def,
+            outputs=output_names,
+            max_batch_size=max_batch_size,
+            precision_mode=precision,
+            minimum_segment_size=2)
+
+    def get_graph_from_graph_def(
+            self,
+            graph_def,
+            input_name,
+            output_names):
+        g = tf.Graph()
+        with g.as_default():
+            graph_tensors = tf.import_graph_def(
+                graph_def=graph_def,
+                return_elements=[input_name]+output_names)
+            input = graph_tensors.pop(0).outputs[0]
+            outputs = [i.outputs[0] for i in graph_tensors]
+        return g, input, outputs
+
     def build_inference_fcn(
             self,
             sess,
@@ -124,28 +158,10 @@ class Network(object):
             output_names = [name+":0" for name in output_names]
             return lambda img: sess.run(output_names, feed_dict={input_name:img})
 
-        # for TensorRT, freeze the variables to constants to make a frozen graph
-        # then build a TRT inference engine from this, load it into a session,
-        # and then build the appropriate lambda funtion
-        graph_def = tf.graph_util.convert_variables_to_constants(
-            sess,
-            graph.as_graph_def(),
-            output_names)
-        trt_graph_def = trt.create_inference_graph(
-            graph_def,
-            outputs=output_names,
-            max_batch_size=max_batch_size,
-            max_workspace_size_bytes=1<<25,
-            precision_mode=precision,
-            minimum_segment_size=2)
-        g = tf.Graph()
-        with g.as_default():
-            graph_tensors = tf.import_graph_def(
-                graph_def=trt_graph_def,
-                return_elements=[input_name]+output_names)
-            input = graph_tensors.pop(0).outputs[0]
-            outputs = [i.outputs[0] for i in graph_tensors]
-        sess = tf.Session(graph=g)
+        trt_graph_def = self.build_trt_graph_def(sess, graph, output_names, max_batch_size, precision)
+        trt_graph, input, outputs = self.get_graph_from_graph_def(trt_graph_def, input_name, output_names)
+
+        sess = tf.Session(graph=trt_graph)
         return lambda img: sess.run(outputs, feed_dict={input: img})
 
     def get_output(self):
@@ -207,7 +223,10 @@ class Network(object):
         with tf.variable_scope(name):
             i = int(inp.get_shape()[-1])
             alpha = self.make_var('alpha', shape=(i,))
-            output = tf.nn.relu(inp) + tf.multiply(alpha, -tf.nn.relu(-inp))
+            neg_inp = tf.scalar_mul(-1, inp)
+            relu = tf.nn.relu(inp)
+            neg_relu = tf.nn.relu(neg_inp)
+            output = relu + tf.multiply(alpha, tf.scalar_mul(-1, neg_relu))
         return output
 
     @layer
@@ -337,6 +356,83 @@ def get_inference_function(
         output_names,
         max_batch_size=max_batch_size,
         use_trt=use_trt)
+
+def get_inference_graph(
+        network,
+        input_shape,
+        output_names,
+        model_path,
+        weights,
+        gpu_options,
+        max_batch_size=128,
+        use_trt=False):
+    graph = tf.Graph()
+    with graph.as_default():
+        config = tf.ConfigProto(gpu_options=gpu_options, log_device_placement=False)
+        sess = tf.Session(config=config)
+        with sess.as_default():
+            data = tf.placeholder(tf.float32, input_shape, 'input')
+            net = network({'data': data})
+            net.load(os.path.join(model_path, weights), sess)
+    if not use_trt:
+        return graph.as_graph_def()
+    return net.build_trt_graph_def(
+        sess,
+        graph,
+        output_names,
+        max_batch_size=max_batch_size,
+        precision='fp16')
+
+def get_graphs_and_funcs(
+        network,
+        input_shape,
+        output_names,
+        model_path,
+        weights,
+        gpu_options,
+        max_batch_size=128):
+    graph = tf.Graph()
+    with graph.as_default():
+        config = tf.ConfigProto(gpu_options=gpu_options, log_device_placement=False)
+        sess = tf.Session(config=config)
+        with sess.as_default():
+            data = tf.placeholder(tf.float32, input_shape, 'input')
+            net = network({'data': data})
+            net.load(os.path.join(model_path, weights), sess)
+
+    input_name = data.name.split(":")[0]
+    regular_graph_def = graph.as_graph_def()
+    regular_func = net.build_inference_fcn(sess, graph, input_name, output_names, use_trt=False)
+
+    trt_graph_def = net.build_trt_graph_def(
+        sess,
+        graph,
+        output_names,
+        max_batch_size=max_batch_size,
+        precision='fp16')
+    trt_func = net.build_inference_fcn(sess, graph, input_name, output_names, max_batch_size=max_batch_size, use_trt=True)
+    return regular_graph_def, regular_func, trt_graph_def, trt_func    
+
+def _create_graphs(gpu_options, model_path, use_trt=False):
+    if not model_path:
+        model_path,_ = os.path.split(os.path.realpath(__file__))
+
+    pnet_graph = get_inference_graph(PNet, (None,None,None,3), ['conv4-2/BiasAdd', 'prob1'], model_path, 'det1.npy', gpu_options, 1, use_trt=use_trt)
+    rnet_graph = get_inference_graph(RNet, (None,24,24,3), ['conv5-2/conv5-2', 'prob1'], model_path, 'det2.npy', gpu_options, 512, use_trt=use_trt)
+    onet_graph = get_inference_graph(ONet, (None,48,48,3), ['conv6-2/conv6-2', 'conv6-3/conv6-3', 'prob1'], model_path, 'det3.npy', gpu_options, 512, use_trt=use_trt)
+    return pnet_graph, rnet_graph, onet_graph
+
+def get_graph_and_func(gpu_options, model_path, func='pnet'):
+    if not model_path:
+            model_path,_ = os.path.split(os.path.realpath(__file__))
+    if func == 'pnet':
+        return get_graphs_and_funcs(PNet, (None,224,224,3), ['conv4-2/BiasAdd', 'prob1'], model_path, 'det1.npy', gpu_options, 1)
+    elif func == 'rnet':
+        return get_graphs_and_funcs(RNet, (None,24,24,3), ['conv5-2/conv5-2', 'prob1'], model_path, 'det2.npy', gpu_options, 512)
+    elif func == 'onet':
+        return get_graphs_and_funcs(ONet, (None,48,48,3), ['conv6-2/conv6-2', 'conv6-3/conv6-3', 'prob1'], model_path, 'det3.npy', gpu_options, 512)
+    else:
+        raise ValueError('Unknown func {}'.format(func))
 
 def create_mtcnn(gpu_options, model_path, use_trt=False):
     if not model_path:
