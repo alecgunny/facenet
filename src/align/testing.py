@@ -32,5 +32,6 @@ trt_warm_up = time_func(trt_func, inp, 20)
 tf_time = time_func(tf_func, inp)
 trt_time = time_func(trt_func, inp)
 
-print(tf_time)
-print(trt_time)
+print('')
+print('TensorFlow Execution Time: {:0.4f} s'.format(tf_time))
+print('TensorRT Execution Time: {:0.4f} s'.format(trt_time))
