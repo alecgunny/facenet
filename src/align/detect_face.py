@@ -426,7 +426,7 @@ def get_graph_and_func(gpu_options, model_path, func='pnet'):
     if not model_path:
             model_path,_ = os.path.split(os.path.realpath(__file__))
     if func == 'pnet':
-        return get_graphs_and_funcs(PNet, (None,224,224,3), ['conv4-2/BiasAdd', 'prob1'], model_path, 'det1.npy', gpu_options, 1)
+        return get_graphs_and_funcs(PNet, (None,None,None,3), ['conv4-2/BiasAdd', 'prob1'], model_path, 'det1.npy', gpu_options, 1)
     elif func == 'rnet':
         return get_graphs_and_funcs(RNet, (None,24,24,3), ['conv5-2/conv5-2', 'prob1'], model_path, 'det2.npy', gpu_options, 512)
     elif func == 'onet':
