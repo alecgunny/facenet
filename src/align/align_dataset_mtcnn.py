@@ -34,7 +34,7 @@ import numpy as np
 import facenet
 import align.detect_face
 import random
-from time import sleep
+from time import sleep, time
 
 def main(args):
     sleep(random.random())
@@ -67,6 +67,7 @@ def main(args):
         nrof_successfully_aligned = 0
         if args.random_order:
             random.shuffle(dataset)
+        start = time()
         for cls in dataset:
             output_class_dir = os.path.join(output_dir, cls.name)
             if not os.path.exists(output_class_dir):
@@ -77,7 +78,7 @@ def main(args):
                 nrof_images_total += 1
                 filename = os.path.splitext(os.path.split(image_path)[1])[0]
                 output_filename = os.path.join(output_class_dir, filename+'.png')
-                # print(image_path)
+                print(image_path, "{} images per second".format(nrof_successfully_aligned / (time() - start)))
                 if not os.path.exists(output_filename):
                     try:
                         img = misc.imread(image_path)
