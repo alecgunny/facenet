@@ -52,11 +52,11 @@ def main(args):
     gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=args.gpu_memory_fraction, allow_growth=True)
     # sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options, log_device_placement=False))
     # with sess.as_default():
-    pnet, rnet, onet = align.detect_face.create_mtcnn(gpu_options, None, use_trt=args.use_trt)
     
     minsize = 20 # minimum size of face
     threshold = [ 0.6, 0.7, 0.7 ]  # three steps's threshold
     factor = 0.709 # scale factor
+    pnet, rnet, onet = align.detect_face.create_mtcnn(gpu_options, None, args.input_image_size, minsize, factor, use_trt=args.use_trt)
 
     # Add a random key to the filename to allow alignment using multiple processes
     random_key = np.random.randint(0, high=99999)
@@ -156,6 +156,8 @@ def parse_arguments(argv):
                         help='Detect and align multiple faces per image.', default=False)
     parser.add_argument('--use_trt',
         help='whether to build inference engine with TensorRT', action='store_true')
+    parser.add_argument('--input_image_size', type=int,
+        help='input image size for pnets', default=250)
     return parser.parse_args(argv)
 
 if __name__ == '__main__':

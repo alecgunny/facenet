@@ -341,14 +341,30 @@ def get_inference_function(
         max_batch_size=max_batch_size,
         use_trt=use_trt)
 
-def create_mtcnn(gpu_options, model_path, use_trt=False):
+def create_mtcnn(gpu_options, model_path, imgsize, minsize, factor, use_trt=False):
     if not model_path:
         model_path,_ = os.path.split(os.path.realpath(__file__))
 
-    pnet_fun = get_inference_function(PNet, (None,None,None,3), ['conv4-2/BiasAdd', 'prob1'], model_path, 'det1.npy', gpu_options, 1, use_trt=use_trt)
+    scales = get_scales(minsize, factor, imgsize)
+    pnet_funs = {}
+    for scale in scales:
+        imgscale = int(np.ceil(imgsize*scale))
+        pnet_funs[scale] = get_inference_function(PNet, (None,imgscale,imgscale,3), ['conv4-2/BiasAdd', 'prob1'], model_path, 'det1.npy', gpu_options, 1, use_trt=use_trt)
+    # pnet_fun = get_inference_function(PNet, (None,None,None,3), ['conv4-2/BiasAdd', 'prob1'], model_path, 'det1.npy', gpu_options, 1, use_trt=use_trt)
     rnet_fun = get_inference_function(RNet, (None,24,24,3), ['conv5-2/conv5-2', 'prob1'], model_path, 'det2.npy', gpu_options, 512, use_trt=use_trt)
     onet_fun = get_inference_function(ONet, (None,48,48,3), ['conv6-2/conv6-2', 'conv6-3/conv6-3', 'prob1'], model_path, 'det3.npy', gpu_options, 512, use_trt=use_trt)
-    return pnet_fun, rnet_fun, onet_fun
+    return pnet_funs, rnet_fun, onet_fun
+
+def get_scales(minsize, factor, minl):
+    m = 12.0/minsize
+    minl = minl*m
+    scales = []
+    factor_count = 0
+    while minl>=12:
+        scales += [m*np.power(factor, factor_count)]
+        minl = minl*factor
+        factor_count += 1
+    return scales
 
 def detect_face(img, minsize, pnet, rnet, onet, threshold, factor):
     """Detects faces in an image, and returns bounding boxes and points for them.
@@ -364,14 +380,7 @@ def detect_face(img, minsize, pnet, rnet, onet, threshold, factor):
     h=img.shape[0]
     w=img.shape[1]
     minl=np.amin([h, w])
-    m=12.0/minsize
-    minl=minl*m
-    # create scale pyramid
-    scales=[]
-    while minl>=12:
-        scales += [m*np.power(factor, factor_count)]
-        minl = minl*factor
-        factor_count += 1
+    scales = get_scales(minsize, factor, minl)
 
     # first stage
     for scale in scales:
@@ -381,7 +390,7 @@ def detect_face(img, minsize, pnet, rnet, onet, threshold, factor):
         im_data = (im_data-127.5)*0.0078125
         img_x = np.expand_dims(im_data, 0)
         img_y = np.transpose(img_x, (0,2,1,3))
-        out = pnet(img_y)
+        out = pnet[scale](img_y)
         out0 = np.transpose(out[0], (0,2,1,3))
         out1 = np.transpose(out[1], (0,2,1,3))
         
