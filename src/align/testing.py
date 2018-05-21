@@ -12,7 +12,7 @@ net = args.net
 gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.5, allow_growth=True)
 tf_graph_def, tf_func, trt_graph_def, trt_func = get_graph_and_func(gpu_options, None, net)
 
-input_shapes = {'pnet': (1, 224, 224, 3), 'rnet': (512, 24, 24, 3), 'onet': (512, 48, 48, 3)}
+input_shapes = {'pnet': (1, 150, 150, 3), 'rnet': (512, 24, 24, 3), 'onet': (512, 48, 48, 3)}
 inp = np.random.randn(*input_shapes[net]).astype('float32')
 
 def time_func(func, inp, iters=100):
