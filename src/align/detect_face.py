@@ -404,14 +404,22 @@ def get_graphs_and_funcs(
     regular_graph_def = graph.as_graph_def()
     regular_func = net.build_inference_fcn(sess, graph, input_name, output_names, use_trt=False)
 
-    trt_graph_def = net.build_trt_graph_def(
+    trt16_graph_def = net.build_trt_graph_def(
         sess,
         graph,
         output_names,
         max_batch_size=max_batch_size,
         precision='fp16')
-    trt_func = net.build_inference_fcn(sess, graph, input_name, output_names, max_batch_size=max_batch_size, use_trt=True)
-    return regular_graph_def, regular_func, trt_graph_def, trt_func    
+    trt16_func = net.build_inference_fcn(sess, graph, input_name, output_names, max_batch_size=max_batch_size, use_trt=True, precision='fp16')
+
+    trt32_graph_def = net.build_trt_graph_def(
+        sess,
+        graph,
+        output_names,
+        max_batch_size=max_batch_size,
+        precision='fp32')
+    trt32_func = net.build_inference_fcn(sess, graph, input_name, output_names, max_batch_size=max_batch_size, use_trt=True, precision='fp32')
+    return regular_graph_def, regular_func, trt16_graph_def, trt16_func, trt32_graph_def, trt32_func    
 
 def _create_graphs(gpu_options, model_path, use_trt=False):
     if not model_path:
