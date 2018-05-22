@@ -324,7 +324,8 @@ def get_inference_function(
         weights,
         gpu_options,
         max_batch_size=128,
-        use_trt=False):
+        use_trt=False,
+        precision='fp16'):
     graph = tf.Graph()
     with graph.as_default():
         config = tf.ConfigProto(gpu_options=gpu_options, log_device_placement=False)
@@ -339,9 +340,10 @@ def get_inference_function(
         'input',
         output_names,
         max_batch_size=max_batch_size,
-        use_trt=use_trt)
+        use_trt=use_trt,
+        precision=precision)
 
-def create_mtcnn(gpu_options, model_path, imgsize, minsize, factor, use_trt=False):
+def create_mtcnn(gpu_options, model_path, imgsize, minsize, factor, use_trt=False, precision='fp16'):
     if not model_path:
         model_path,_ = os.path.split(os.path.realpath(__file__))
 
@@ -349,10 +351,10 @@ def create_mtcnn(gpu_options, model_path, imgsize, minsize, factor, use_trt=Fals
     pnet_funs = {}
     for scale in scales:
         imgscale = int(np.ceil(imgsize*scale))
-        pnet_funs[scale] = get_inference_function(PNet, (None,imgscale,imgscale,3), ['conv4-2/BiasAdd', 'prob1'], model_path, 'det1.npy', gpu_options, 1, use_trt=use_trt)
+        pnet_funs[scale] = get_inference_function(PNet, (None,imgscale,imgscale,3), ['conv4-2/BiasAdd', 'prob1'], model_path, 'det1.npy', gpu_options, 1, use_trt=use_trt, precision=precision)
     # pnet_fun = get_inference_function(PNet, (None,None,None,3), ['conv4-2/BiasAdd', 'prob1'], model_path, 'det1.npy', gpu_options, 1, use_trt=use_trt)
-    rnet_fun = get_inference_function(RNet, (None,24,24,3), ['conv5-2/conv5-2', 'prob1'], model_path, 'det2.npy', gpu_options, 512, use_trt=use_trt)
-    onet_fun = get_inference_function(ONet, (None,48,48,3), ['conv6-2/conv6-2', 'conv6-3/conv6-3', 'prob1'], model_path, 'det3.npy', gpu_options, 512, use_trt=use_trt)
+    rnet_fun = get_inference_function(RNet, (None,24,24,3), ['conv5-2/conv5-2', 'prob1'], model_path, 'det2.npy', gpu_options, 512, use_trt=use_trt, precision=precision)
+    onet_fun = get_inference_function(ONet, (None,48,48,3), ['conv6-2/conv6-2', 'conv6-3/conv6-3', 'prob1'], model_path, 'det3.npy', gpu_options, 512, use_trt=use_trt, precision=precision)
     return pnet_funs, rnet_fun, onet_fun
 
 def get_scales(minsize, factor, minl):
