@@ -1,4 +1,4 @@
-FROM nvcr.io/nvidia/tensorflow:18.04-py3
+FROM gitlab-dl.nvidia.com:5005/dgx/tensorflow:18.06-py2-stage
 
 RUN \
   apt-get update && \
