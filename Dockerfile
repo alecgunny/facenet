@@ -1,4 +1,4 @@
-FROM gitlab-dl.nvidia.com:5005/dgx/tensorflow:18.06-py2-stage
+FROM nvcr.io/nvidia/tensorflow:18.07-py3
 
 RUN \
   apt-get update && \
@@ -30,5 +30,5 @@ ENV PYTHONPATH /workspace/facenet/src/
 
 WORKDIR /workspace/facenet/
 
-ENTRYPOINT ["python", "-i", "src/align/testing.py"]
-CMD ['pnet', '1']
+ENTRYPOINT ["python", "src/align/benchmark.py"]
+CMD ["pnet", "1"]
